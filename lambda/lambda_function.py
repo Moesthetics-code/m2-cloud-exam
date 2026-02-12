@@ -3,7 +3,7 @@ import os
 
 ec2 = boto3.client('ec2')
 
-def lambda_handler(event, context):
+def lambda_handler(event, context): # Ajout du commentaire pour test
     """
     Fonction Lambda pour stopper une instance EC2.
     L'Instance ID doit être fourni via variable d'environnement INSTANCE_ID.
