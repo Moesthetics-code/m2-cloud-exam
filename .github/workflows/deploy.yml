@@ -2,139 +2,139 @@
 name: AWS Cloud Deployment
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:  # Permet de lancer manuellement
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    workflow_dispatch: # Permet de lancer manuellement
 
 env:
-  AWS_REGION: eu-west-3
-  BUCKET_NAME: m2-cloud-logs-mouhamed
-  LAMBDA_FUNCTION: stop-ec2-function
+    AWS_REGION: eu-north-1
+    BUCKET_NAME: m2-cloud-logs-mouhamed
+    LAMBDA_FUNCTION: stop-ec2-function
 
 jobs:
-  # ═══════════════════════════════════════════════════════════════
-  #  STAGE 1 : VALIDATE
-  # ═══════════════════════════════════════════════════════════════
-  validate:
-    name: 🔐 Validate AWS Credentials
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-    
-    - name: Verify Identity
-      run: |
-        echo "══════════════════════════════════════"
-        echo "🔐 AWS Caller Identity"
-        echo "══════════════════════════════════════"
-        aws sts get-caller-identity
-        echo "✅ Credentials valides"
+    # ═══════════════════════════════════════════════════════════════
+    #  STAGE 1 : VALIDATE
+    # ═══════════════════════════════════════════════════════════════
+    validate:
+        name: 🔐 Validate AWS Credentials
+        runs-on: ubuntu-latest
 
-  # ═══════════════════════════════════════════════════════════════
-  #  STAGE 2 : DEPLOY LAMBDA
-  # ═══════════════════════════════════════════════════════════════
-  deploy_lambda:
-    name: 🚀 Deploy Lambda
-    runs-on: ubuntu-latest
-    needs: validate
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-    
-    - name: Package Lambda
-      run: |
-        echo "📦 Packaging Lambda function..."
-        cd lambda
-        zip -r ../function.zip lambda_function.py
-        cd ..
-        ls -lh function.zip
-    
-    - name: Update Lambda Code
-      run: |
-        echo "🚀 Deploying to Lambda: $LAMBDA_FUNCTION"
-        aws lambda update-function-code \
-          --function-name $LAMBDA_FUNCTION \
-          --zip-file fileb://function.zip \
-          --region $AWS_REGION
-        
-        echo "✅ Lambda updated successfully"
-    
-    - name: Verify Deployment
-      run: |
-        echo "🔍 Verifying Lambda deployment..."
-        aws lambda get-function \
-          --function-name $LAMBDA_FUNCTION \
-          --region $AWS_REGION \
-          --query 'Configuration.[FunctionName,Runtime,LastModified]' \
-          --output table
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-  # ═══════════════════════════════════════════════════════════════
-  #  STAGE 3 : UPLOAD SCRIPT TO S3
-  # ═══════════════════════════════════════════════════════════════
-  upload_script:
-    name: 📤 Upload Script to S3
-    runs-on: ubuntu-latest
-    needs: validate
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-    
-    - name: Upload to S3
-      run: |
-        echo "📤 Uploading script to S3..."
-        aws s3 cp scripts/upload-to-s3.sh \
-          s3://$BUCKET_NAME/scripts/upload-to-s3.sh \
-          --region $AWS_REGION
-        
-        echo "✅ Script uploaded successfully"
-        echo "📍 s3://$BUCKET_NAME/scripts/upload-to-s3.sh"
-    
-    - name: Verify Upload
-      run: |
-        echo "🔍 Verifying S3 upload..."
-        aws s3 ls s3://$BUCKET_NAME/scripts/ --region $AWS_REGION
+            - name: Configure AWS
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
 
-  # ═══════════════════════════════════════════════════════════════
-  #  DEPLOYMENT SUMMARY
-  # ═══════════════════════════════════════════════════════════════
-  summary:
-    name: 📊 Deployment Summary
-    runs-on: ubuntu-latest
-    needs: [deploy_lambda, upload_script]
-    
-    steps:
-    - name: Summary
-      run: |
-        echo "══════════════════════════════════════"
-        echo "✅ DEPLOYMENT SUCCESSFUL"
-        echo "══════════════════════════════════════"
-        echo "🚀 Lambda: $LAMBDA_FUNCTION"
-        echo "📦 Bucket: $BUCKET_NAME"
-        echo "🌍 Region: $AWS_REGION"
-        echo "══════════════════════════════════════"
+            - name: Verify Identity
+              run: |
+                  echo "══════════════════════════════════════"
+                  echo "🔐 AWS Caller Identity"
+                  echo "══════════════════════════════════════"
+                  aws sts get-caller-identity
+                  echo "✅ Credentials valides"
+
+    # ═══════════════════════════════════════════════════════════════
+    #  STAGE 2 : DEPLOY LAMBDA
+    # ═══════════════════════════════════════════════════════════════
+    deploy_lambda:
+        name: 🚀 Deploy Lambda
+        runs-on: ubuntu-latest
+        needs: validate
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Configure AWS
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Package Lambda
+              run: |
+                  echo "📦 Packaging Lambda function..."
+                  cd lambda
+                  zip -r ../function.zip lambda_function.py
+                  cd ..
+                  ls -lh function.zip
+
+            - name: Update Lambda Code
+              run: |
+                  echo "🚀 Deploying to Lambda: $LAMBDA_FUNCTION"
+                  aws lambda update-function-code \
+                    --function-name $LAMBDA_FUNCTION \
+                    --zip-file fileb://function.zip \
+                    --region $AWS_REGION
+
+                  echo "✅ Lambda updated successfully"
+
+            - name: Verify Deployment
+              run: |
+                  echo "🔍 Verifying Lambda deployment..."
+                  aws lambda get-function \
+                    --function-name $LAMBDA_FUNCTION \
+                    --region $AWS_REGION \
+                    --query 'Configuration.[FunctionName,Runtime,LastModified]' \
+                    --output table
+
+    # ═══════════════════════════════════════════════════════════════
+    #  STAGE 3 : UPLOAD SCRIPT TO S3
+    # ═══════════════════════════════════════════════════════════════
+    upload_script:
+        name: 📤 Upload Script to S3
+        runs-on: ubuntu-latest
+        needs: validate
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Configure AWS
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Upload to S3
+              run: |
+                  echo "📤 Uploading script to S3..."
+                  aws s3 cp scripts/upload-to-s3.sh \
+                    s3://$BUCKET_NAME/scripts/upload-to-s3.sh \
+                    --region $AWS_REGION
+
+                  echo "✅ Script uploaded successfully"
+                  echo "📍 s3://$BUCKET_NAME/scripts/upload-to-s3.sh"
+
+            - name: Verify Upload
+              run: |
+                  echo "🔍 Verifying S3 upload..."
+                  aws s3 ls s3://$BUCKET_NAME/scripts/ --region $AWS_REGION
+
+    # ═══════════════════════════════════════════════════════════════
+    #  DEPLOYMENT SUMMARY
+    # ═══════════════════════════════════════════════════════════════
+    summary:
+        name: 📊 Deployment Summary
+        runs-on: ubuntu-latest
+        needs: [deploy_lambda, upload_script]
+
+        steps:
+            - name: Summary
+              run: |
+                  echo "══════════════════════════════════════"
+                  echo "✅ DEPLOYMENT SUCCESSFUL"
+                  echo "══════════════════════════════════════"
+                  echo "🚀 Lambda: $LAMBDA_FUNCTION"
+                  echo "📦 Bucket: $BUCKET_NAME"
+                  echo "🌍 Region: $AWS_REGION"
+                  echo "══════════════════════════════════════"
